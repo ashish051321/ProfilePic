@@ -1,0 +1,27 @@
+{
+    "users": {
+        "1": {
+            "name": "David",
+            "email": "david@email.com",
+            "age": 99,
+            "location": "SF",
+            "age_location": "99_SF"
+        },
+        "9": {
+            "name": "Alice",
+            "email": "alice@email.com",
+            "age": 28,
+            "location": "Berlin",
+            "age_location": "28_Berlin"
+        }
+    }
+}
+
+//get details about the user with id 1
+const rootRef = firebase.database().ref();
+rootRef.child("users").child("1").on("value", (data) => {
+    data.val();
+});
+
+// find a user with a given email address
+rootref.child("users").orderByChild("email").equalTo("alice@email.com")
