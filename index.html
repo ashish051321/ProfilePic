@@ -49,7 +49,7 @@
             display: none;
         }
 
-        div.editoverlay {
+        div.imageoverlay {
             position: absolute;
             top: 0px;
             left: 0px;
@@ -65,7 +65,7 @@
             /* transition: all 0.7s; */
         }
 
-        div.profilepicholder:hover .editoverlay {
+        div.profilepicholder:hover .editoverlayMessage {
             visibility: visible;
         }
 
@@ -92,6 +92,14 @@
         h2 {
             font-size: 1em;
         }
+
+        .profilepicholder>progress {
+            position: absolute;
+            bottom: -20px;
+            width: 100px;
+            left: 15px;
+            display: none;
+        }
     </style>
 </head>
 
@@ -99,11 +107,13 @@
     <div class="container">
         <div class="banner"></div>
         <div class="profilepicholder">
-            <div class="editoverlay">edit</div>
+            <div class="imageoverlay" id="editoverlayMessage">edit</div>
+            <div class="imageoverlay" id="loadingoverlayMessage">loading...</div>
+            <progress id="uploadprogress" value="0" max="100"></progress>
         </div>
+
         <input type="file" name="myImage" accept="image/x-png,image/gif,image/jpeg" id="fileupload" />
         <br>
-        <progress id="uploadprogress" value="0" max="100"></progress>
 
         <h2 style="padding:10px; font-weight:100; font-style: italic; color:lightslategray; text-align:justify;">Please note that, this is a Firebase enabled application. Whatever image you select as profile pic, will get saved
             in the firebase storage !</h2>
@@ -262,10 +272,11 @@
         }
 
         // Now we want to make the script to enable
-        // drag and drop or file input to change the profile pic.
+        // file input to change the profile pic.
         document.addEventListener("DOMContentLoaded", () => {
             //this is a shorthand for using the query selector.
             let qs = document.querySelector.bind(document);
+            fetchAndSetProfilePic();
             qs("#fileupload").addEventListener("change", (e) => {
 
                 if (e.target.files.length > 0) {
@@ -283,7 +294,7 @@
                 var reader = new FileReader();
                 var myImageFile = imagefile;
                 reader.readAsDataURL(myImageFile);
-                console.log("my image file", myImageFile);
+                // console.log("my image file", myImageFile);
                 reader.onload = (e) => {
                     // qs('#imagePreview').style.display = "initial";
                     // qs('#imagePreview').setAttribute('src', e.target.result);
@@ -291,7 +302,7 @@
 
                     qs(".profilepicholder").style.backgroundImage = img;
                     //After I have set it as image, I would like to save it.
-                    console.log("my image file", myImageFile);
+                    // console.log("my image file", myImageFile);
                     saveFileInFirebase(myImageFile);
                     // saveFileInFirebase(e.target.result);
                 }
@@ -300,6 +311,7 @@
 
             function saveFileInFirebase(myFile) { //this file is the one we got from the change event and event.target.files
                 // Earlier we were creating database reference. Now we will create storage reference.
+                uploadProgress.style.display = 'initial';
                 var fstore = firebase.storage();
                 var uploadRef = fstore.ref().child('images/profilePic.png');
                 // Create file metadata including the content type
@@ -317,13 +329,16 @@
                         // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
                         var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                         uploadProgress.setAttribute("value", progress);
-                        console.log("Completed: ", progress + "%");
+                        // console.log("Completed: ", progress + "%");
                     },
                     function (err) {
                         console.log("Upload Failed", data.downloadURL);
                     },
                     function (data) {
                         console.log("Upload Successful", uploadTask.snapshot.downloadURL);
+                        setTimeout(() => {
+                            uploadProgress.style.display = 'none';
+                        }, 2000);
                     }
                 );
             }
@@ -357,7 +372,45 @@
 
                     }
                 }
+            } //isOnline ends
+
+            function fetchAndSetProfilePic() {
+                firebase.storage().ref().child('images/profilePic.png').getDownloadURL().then(function (url) {
+
+                    qs("#loadingoverlayMessage").style.visibility = "visible";
+                    console.log("file url available", url);
+                    // This can be downloaded directly:
+                    var xhr = new XMLHttpRequest();
+                    xhr.responseType = 'blob';
+                    xhr.open('GET', url);
+                    xhr.send();
+                    xhr.onload = function (event) {
+                        var blob = xhr.response;
+                        var reader = new FileReader();
+                        reader.readAsDataURL(blob);
+                        // console.log("my image file", myImageFile);
+                        reader.onload = (e) => {
+                            // qs('#imagePreview').style.display = "initial";
+                            // qs('#imagePreview').setAttribute('src', e.target.result);
+                            var img = "url(" + e.target.result + ")";
+
+                            qs(".profilepicholder").style.backgroundImage = img;
+                            qs("#loadingoverlayMessage").style.visibility = "hidden";
+                        }
+
+                    };
+
+                }).catch(function (error) {
+                    // Handle any errors
+                    console.log("Profile Pic Fetch Failed", error);
+                });
+
             }
+
+
+
+
+
         });
     </script>
 </body>
