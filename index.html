@@ -75,7 +75,7 @@
             width: 200px;
             height: 40px;
             background-color: orangered;
-            color:white;
+            color: white;
             line-height: 40px;
             text-align: center;
             /* initially not visible */
@@ -86,7 +86,7 @@
 
         #onlineMessage {
             background-color: green;
-            color:white;
+            color: white;
         }
 
         h2 {
@@ -102,6 +102,9 @@
             <div class="editoverlay">edit</div>
         </div>
         <input type="file" name="myImage" accept="image/x-png,image/gif,image/jpeg" id="fileupload" />
+        <br>
+        <progress id="uploadprogress" value="0" max="100"></progress>
+
         <h2 style="padding:10px; font-weight:100; font-style: italic; color:lightslategray; text-align:justify;">Please note that, this is a Firebase enabled application. Whatever image you select as profile pic, will get saved
             in the firebase storage !</h2>
         <br>
@@ -109,9 +112,11 @@
 
         <!-- <button onclick="saveInFirebase()"> Save Profile Pic in DB</button> -->
     </div>
+
     <div id="offlineMessage">Internet OFF. </div>
     <div id="onlineMessage">Internet ON. </div>
     <script>
+        var uploadProgress = document.querySelector("#uploadprogress");
         // Initializing Firebase
         // Initialize Firebase
         var config = {
@@ -276,24 +281,60 @@
 
             function fixAsImage(imagefile) {
                 var reader = new FileReader();
-                reader.onload = function (e) {
+                var myImageFile = imagefile;
+                reader.readAsDataURL(myImageFile);
+                console.log("my image file", myImageFile);
+                reader.onload = (e) => {
                     // qs('#imagePreview').style.display = "initial";
                     // qs('#imagePreview').setAttribute('src', e.target.result);
                     var img = "url(" + e.target.result + ")";
-                    // console.log(e.target.result);
+
                     qs(".profilepicholder").style.backgroundImage = img;
                     //After I have set it as image, I would like to save it.
-                    saveFileInFirebase(imageFile);
+                    console.log("my image file", myImageFile);
+                    saveFileInFirebase(myImageFile);
+                    // saveFileInFirebase(e.target.result);
                 }
-                reader.readAsDataURL(imagefile);
             }
 
 
-            function saveFileInFirebase() {
+            function saveFileInFirebase(myFile) { //this file is the one we got from the change event and event.target.files
                 // Earlier we were creating database reference. Now we will create storage reference.
-                var storageRef = firebase.storage();
+                var fstore = firebase.storage();
+                var uploadRef = fstore.ref().child('images/profilePic.png');
+                // Create file metadata including the content type
+                var metadata = {
+                    contentType: 'image/png'
+                };
+                var uploadTask = uploadRef.put(myFile, metadata);
+                // Register three observers:
+                // 1. 'state_changed' observer, called any time the state changes
+                // 2. Error observer, called on failure
+                // 3. Completion observer, called on successful completion
+
+                uploadTask.on('state_changed', function (snapshot) {
+                        // Observe state change events such as progress, pause, and resume
+                        // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
+                        var progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        uploadProgress.setAttribute("value", progress);
+                        console.log("Completed: ", progress + "%");
+                    },
+                    function (err) {
+                        console.log("Upload Failed", data.downloadURL);
+                    },
+                    function (data) {
+                        console.log("Upload Successful", uploadTask.snapshot.downloadURL);
+                    }
+                );
+            }
+
+            // Read profilePic image from firebase database, when the page loads for the first time.
+            // If the image is present, read and place it in the profile pic placeholder.
+            function readFileFromFirebase() {
 
             }
+
+
 
             // Intimating the user about loss of interconnectivity.
             setInterval(isOnline, 3000);
